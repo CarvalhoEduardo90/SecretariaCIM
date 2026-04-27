@@ -1,0 +1,56 @@
+// Prisma Schema - Secretaria CIM
+// Compatível com PostgreSQL local e Supabase
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum StatusMembro {
+  ATIVO
+  INATIVO
+  TRANSFERIDO
+}
+
+// ============================================
+// MODELS
+// ============================================
+
+model Membro {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Dados pessoais
+  nome            String
+  email           String    @unique
+  telefone        String?
+  dataNascimento  DateTime? @db.Date
+  dataBatismo     DateTime? @db.Date
+  cargo           String?
+  status          StatusMembro @default(ATIVO)
+
+  // Endereço (JSON para flexibilidade)
+  endereco Json?
+
+  @@index([status])
+  @@index([email])
+  @@map("membros")
+}
+
+// Tabela de controle de migrações/metas
+model MetaSistema {
+  id        String   @id @default(uuid()) @db.Uuid
+  chave     String   @unique
+  valor     String
+  updatedAt DateTime @updatedAt
+
+  @@map("meta_sistema")
+}

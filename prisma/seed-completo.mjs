@@ -1,3 +1,6 @@
+// @ts-check
+// Seed script completo - 80 pessoas, matrículas e pagamentos
+
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient({
@@ -37,18 +40,18 @@ const cidades = ["São Paulo", "Rio de Janeiro", "Belo Horizonte", "Curitiba", "
 const estados = ["SP", "RJ", "MG", "PR", "RS", "BA", "PE", "CE", "DF", "GO"];
 const bairros = ["Centro", "Jardim Paulista", "Bela Vista", "Vila Mariana", "Tatuapé", "Mooca", "Pinheiros", "Santana", "Liberdade", "Consolação"];
 
-function gerarCPF(): string {
+function gerarCPF() {
   const n = () => Math.floor(Math.random() * 10);
   return `${n()}${n()}${n()}.${n()}${n()}${n()}.${n()}${n()}${n()}-${n()}${n()}`;
 }
 
-function gerarTelefone(): string {
+function gerarTelefone() {
   const ddd = [11, 21, 31, 41, 51, 71, 81, 85, 61, 62][Math.floor(Math.random() * 10)];
   const n = () => Math.floor(Math.random() * 10);
   return `(${ddd}) 9${n()}${n()}${n()}${n()}-${n()}${n()}${n()}${n()}`;
 }
 
-function gerarEmail(nome: string): string {
+function gerarEmail(nome) {
   const limpo = nome.toLowerCase().replace(/[^a-z\s]/g, "").replace(/\s+/g, ".");
   const dominios = ["gmail.com", "hotmail.com", "outlook.com", "yahoo.com.br", "email.com"];
   return `${limpo}.${Math.floor(Math.random() * 999)}@${dominios[Math.floor(Math.random() * dominios.length)]}`;
@@ -70,7 +73,7 @@ function gerarEndereco() {
   };
 }
 
-function gerarDataNascimento(minAge: number = 16, maxAge: number = 65): Date {
+function gerarDataNascimento(minAge = 16, maxAge = 65) {
   const ano = new Date().getFullYear() - Math.floor(Math.random() * (maxAge - minAge + 1)) - minAge;
   const mes = Math.floor(Math.random() * 12);
   const dia = Math.floor(Math.random() * 28) + 1;
@@ -146,7 +149,7 @@ async function main() {
 
   // 4. Criar Matrículas
   console.log("📝 Criando matrículas...");
-  const aprovador = obreirosCriados[0]; // Pastor
+  const aprovador = obreirosCriados[0];
   let aprovados = 0;
   let pendentes = 0;
   let espera = 0;
@@ -154,9 +157,8 @@ async function main() {
 
   for (const aluno of alunosCriados) {
     const rand = Math.random();
-    let status: "APROVADO" | "PENDENTE" | "ESPERA" | "DESISTENTE";
+    let status;
     
-    // Distribuição: 60% aprovados, 15% pendentes, 15% espera, 10% desistentes
     if (rand < 0.6) {
       status = "APROVADO";
       aprovados++;
@@ -182,22 +184,20 @@ async function main() {
       },
     });
 
-    // Criar pagamentos apenas para aprovados e pendentes
+    // Criar pagamentos para aprovados e pendentes
     if (status === "APROVADO" || status === "PENDENTE") {
-      const pagamentoRand = Math.random();
-      let pagStatus: "PAGO" | "PENDENTE" | "ATRASADO";
+      let pagStatus;
       
       if (status === "APROVADO") {
-        // Aprovados: 70% pagos, 20% pendentes, 10% atrasados
+        const pagamentoRand = Math.random();
         if (pagamentoRand < 0.7) pagStatus = "PAGO";
         else if (pagamentoRand < 0.9) pagStatus = "PENDENTE";
         else pagStatus = "ATRASADO";
       } else {
-        // Pendentes: só criamos registro de pagamento pendente
         pagStatus = "PENDENTE";
       }
 
-      const recebedor = obreirosCriados[Math.floor(Math.random() * 5) + 1]; // Tesoureiro ou outros
+      const recebedor = obreirosCriados[Math.floor(Math.random() * 5) + 1];
 
       await prisma.payment.create({
         data: {
@@ -212,7 +212,6 @@ async function main() {
         },
       });
 
-      // Alguns alunos têm pagamento de material extra
       if (Math.random() < 0.3) {
         await prisma.payment.create({
           data: {

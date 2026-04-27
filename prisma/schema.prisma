@@ -1,4 +1,5 @@
 // Prisma Schema - Secretaria CIM
+// Sistema de Gestão de Cursos
 // Compatível com PostgreSQL local e Supabase
 
 generator client {
@@ -13,44 +14,165 @@ datasource db {
 // ENUMS
 // ============================================
 
-enum StatusMembro {
-  ATIVO
-  INATIVO
-  TRANSFERIDO
+enum RoleType {
+  STUDENT   // Aluno
+  WORKER    // Obreiro/Instrutor
+}
+
+enum StatusEnrollment {
+  PENDENTE
+  APROVADO
+  ESPERA
+  DESISTENTE
+}
+
+enum StatusPayment {
+  PENDENTE
+  PAGO
+  ATRASADO
+  CANCELADO
+}
+
+enum TypePayment {
+  MATRICULA
+  MENSALIDADE
+  MATERIAL
+  OUTRO
 }
 
 // ============================================
 // MODELS
 // ============================================
 
-model Membro {
-  id        String   @id @default(uuid()) @db.Uuid
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model Event {
+  id          String   @id @default(uuid()) @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  // Dados pessoais
-  nome            String
-  email           String    @unique
-  telefone        String?
-  dataNascimento  DateTime? @db.Date
-  dataBatismo     DateTime? @db.Date
-  cargo           String?
-  status          StatusMembro @default(ATIVO)
+  // Dados do evento/curso
+  name        String
+  description String?
+  location    String?
+  
+  // Datas
+  startDate   DateTime @map("start_date")
+  endDate     DateTime @map("end_date")
+  
+  // Configurações
+  maxCapacity Int      @map("max_capacity")
+  isActive    Boolean  @default(true) @map("is_active")
+  price       Decimal? @db.Decimal(10, 2)
 
-  // Endereço (JSON para flexibilidade)
-  endereco Json?
+  // Relacionamentos
+  enrollments Enrollment[]
 
-  @@index([status])
-  @@index([email])
-  @@map("membros")
+  @@index([isActive])
+  @@index([startDate])
+  @@map("events")
 }
 
-// Tabela de controle de migrações/metas
-model MetaSistema {
-  id        String   @id @default(uuid()) @db.Uuid
-  chave     String   @unique
-  valor     String
-  updatedAt DateTime @updatedAt
+model Person {
+  id          String   @id @default(uuid()) @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  @@map("meta_sistema")
+  // Dados pessoais
+  fullName    String   @map("full_name")
+  email       String   @unique
+  phone       String?
+  
+  // Documentação
+  cpf         String?  @unique
+  birthDate   DateTime? @map("birth_date") @db.Date
+  
+  // Classificação
+  roleType    RoleType @map("role_type")
+  
+  // Endereço (JSON flexível)
+  address     Json?
+
+  // Relacionamentos
+  enrollments Enrollment[]
+
+  @@index([roleType])
+  @@index([email])
+  @@index([fullName])
+  @@map("people")
+}
+
+model Enrollment {
+  id          String           @id @default(uuid()) @db.Uuid
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  // Status da matrícula
+  status      StatusEnrollment @default(PENDENTE)
+  
+  // Observações
+  notes       String?
+  
+  // Campos de controle
+  approvedAt  DateTime?        @map("approved_at")
+  approvedBy  String?          @map("approved_by") @db.Uuid
+
+  // Relacionamentos
+  personId    String           @map("person_id") @db.Uuid
+  person      Person           @relation(fields: [personId], references: [id], onDelete: Cascade)
+  
+  eventId     String           @map("event_id") @db.Uuid
+  event       Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  payments    Payment[]
+
+  // Índice composto para evitar duplicatas
+  @@unique([personId, eventId])
+  @@index([status])
+  @@index([eventId])
+  @@index([personId])
+  @@map("enrollments")
+}
+
+model Payment {
+  id          String       @id @default(uuid()) @db.Uuid
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  // Dados do pagamento
+  type        TypePayment
+  amount      Decimal      @db.Decimal(10, 2)
+  status      StatusPayment @default(PENDENTE)
+  
+  // Datas
+  dueDate     DateTime?    @map("due_date")
+  paidAt      DateTime?    @map("paid_at")
+  
+  // Comprovante/Referência
+  receiptUrl  String?      @map("receipt_url")
+  reference   String?
+  
+  // Observações
+  notes       String?
+
+  // Relacionamentos
+  enrollmentId String    @map("enrollment_id") @db.Uuid
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  
+  // Registro de quem recebeu (obreiro)
+  receivedBy   String?    @map("received_by") @db.Uuid
+
+  @@index([status])
+  @@index([type])
+  @@index([enrollmentId])
+  @@index([dueDate])
+  @@map("payments")
+}
+
+// Tabela de controle de versão do sistema
+model SystemMeta {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique
+  value       String
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("system_meta")
 }
